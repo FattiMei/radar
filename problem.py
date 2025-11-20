@@ -47,8 +47,8 @@ def compute_arrival_time(sensor_locations,
                          trigger_time,
                          source_location):
     return trigger_time + np.linalg.norm(
-        (source_location - sensor_locations) / velocity,
-        axis=1
+        (np.expand_dims(source_location, axis=-2) - sensor_locations) / velocity,
+        axis=-1
     )
 
 
@@ -70,7 +70,9 @@ class SingleSourceProblem:
         self.perturbation     = perturbation
 
 
-    def generate_random_instance(outliers: int = 0, sigma: float = 0.0) -> 'SingleSourceProblem':
+    def generate_random_instance(outliers: int = 0,
+                                 sigma: float = 0.0,
+                                 velocity: np.ndarray = VELOCITY) -> 'SingleSourceProblem':
         n = SENSOR_LOCATIONS.shape[0]
         assert(0 <= outliers <= n)
         assert(0.0 <= sigma)

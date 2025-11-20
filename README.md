@@ -14,6 +14,16 @@ Selecting an appropriate loss function is critical in the presence of outliers (
 $$ \mathcal{L}(x, y) = \frac{1}{N} \sum_{i=1}^{N} \rho(T_i - \sqrt{(\frac{x - x_i}{v_x})^2 + (\frac{y - y_i}{v_y})^2}) $$
 
 
+## Ill conditioned problem
+When solving the unperturbed problem I found a strange convergence behaviour. Some optimization runs terminated with a convergence condition, but the solution was way off from the real source position.
+
+This suggests that the problem is ill conditioned, so I studied the loss landscape. It's possible to do it graphically because the problem is only 2-dimensional
+
+![plot](./resources/ill_condition.png)
+
+The contour lines (exponential energy levels) are so squished that an optimizer may get convergence before coming close to the real minimum. I still have to figure out a cure.
+
+
 ## Optimization in the presence of outliers
 By injecting an error on a random sensor, the loss function changes (and so the optimal point)
 
