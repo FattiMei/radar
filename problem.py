@@ -42,7 +42,10 @@ T_TRIGGER = 0.0
 
 
 # propagation dynamic
-def compute_arrival_time(sensor_locations, velocity, trigger_time, source_location):
+def compute_arrival_time(sensor_locations,
+                         velocity,
+                         trigger_time,
+                         source_location):
     return trigger_time + np.linalg.norm(
         (source_location - sensor_locations) / velocity,
         axis=1
@@ -66,11 +69,42 @@ class SingleSourceProblem:
         self.arrival_times    = arrival_times
         self.perturbation     = perturbation
 
+
+    def generate_random_instance(outliers: int = 0, sigma: float = 0.0) -> 'SingleSourceProblem':
+        n = SENSOR_LOCATIONS.shape[0]
+        assert(0 <= outliers <= n)
+        assert(0.0 <= sigma)
+
+        trigger_time = T_TRIGGER
+        source_location = np.array(np.random.uniform(-L, L, size=2))
+
+        arrival_times = compute_arrival_time(
+            SENSOR_LOCATIONS,
+            VELOCITY,
+            trigger_time,
+            source_location
+        )
+
+        perturbation = np.zeros(n)
+        perturbation[
+            np.random.choice(n, size=outliers, replace=False)
+        ] = np.random.normal(loc=0.0, scale=sigma, size=outliers)
+
+        return SingleSourceProblem(
+            trigger_time,
+            VELOCITY,
+            source_location,
+            SENSOR_LOCATIONS,
+            arrival_times + perturbation,
+            perturbation
+        )
+
+
     def get_random_subproblem(self, n: int) -> 'SingleSourceProblem':
         assert(2 < n <= self.sensor_count)
 
         idx = np.random.choice(
-            sensor_count,
+            self.sensor_count,
             size=n,
             replace=False,
         )
