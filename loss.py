@@ -19,7 +19,7 @@ def jacobian(problem: SingleSourceProblem, x: np.ndarray) -> np.ndarray:
 
 
 class AbstractLoss:
-    def __call__(self, residuals: np.ndarray) -> float:
+    def __call__(self, problem: SingleSourceProblem, x: np.ndarray) -> float:
         raise NotImplementedError()
 
     def __str__(self):
@@ -27,7 +27,9 @@ class AbstractLoss:
 
 
 class SquaredLoss(AbstractLoss):
-    def __call__(self, residuals: np.ndarray) -> float:
+    def __call__(self, problem: SingleSourceProblem, x: np.ndarray) -> float:
+        residuals = residual(problem, x)
+
         return 0.5 * np.sum(residuals**2, axis=-1)
 
     def __str__(self):
@@ -38,7 +40,9 @@ class HuberLoss(AbstractLoss):
     def __init__(self, delta: float):
         self.delta = delta
 
-    def __call__(self, residuals: np.ndarray) -> float:
+        residuals = residual(problem, x)
+
+    def __call__(self, problem: SingleSourceProblem, x: np.ndarray) -> float:
         raise NotImplementedError()
 
     def __str__(self):
@@ -49,7 +53,9 @@ class CauchyLoss(AbstractLoss):
     def __init__(self, c: float = 1.0):
         self.c = c
 
-    def __call__(self, residuals: np.ndarray) -> float:
+    def __call__(self, problem: SingleSourceProblem, x: np.ndarray) -> float:
+        residuals = residual(problem, x)
+
         return np.sum(self.c**2 / 2 * np.log1p((residuals / self.c)**2), axis=-1)
 
     def __str__(self):
@@ -60,7 +66,9 @@ class ArctanLoss(AbstractLoss):
     def __init__(self, c: float = 1.0):
         self.c = c
 
-    def __call__(self, residuals: np.ndarray) -> float:
+    def __call__(self, problem: SingleSourceProblem, x: np.ndarray) -> float:
+        residuals = residual(problem, x)
+
         return np.sum(self.c**2 * np.arctan((residuals / self.c)**2), axis=-1)
 
     def __str__(self):
