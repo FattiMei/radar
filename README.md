@@ -1,41 +1,54 @@
 # Source localization problem
-You are given a square domain in which there are placed sensors. An impulse source is placed in the domain and fires at $T_{trigger}$. Each sensor registers the time it has received the impulse. Find the position of the source, if the propagation dynamic is:
+A source point is placed in $[-L,L] \times [-L,L]$. At time $T_{trigger}$ emits a signal that propagates in space by the law:
+$$ T(x,y) = T_{trigger} + \sqrt{(\frac{x - x_s}{v_x})^2 + (\frac{y - y_s}{v_y})^2} $$
 
+where:
+  * $T(x,y)$ is the time the point $(x,y)$ receives the signal
+  * $(x_s, y_s)$ is the position of the source
+
+there are 20 sensor placed in the domain at fixed position. Find the position of the signal source given the arrival time measurements at sensor locations. What happens when some sensors are faulty and give outlier data?
+
+
+## As an optimization problem
+We are tasked to simultaneously satisfy the sensor equations
 $$ T_i = T_{trigger} + \sqrt{(\frac{x - x_i}{v_x})^2 + (\frac{y - y_i}{v_y})^2} $$
 
-where $(x,y)$ is the position of the source
+since there are more equations than unknowns and there may be errors, we solve the non linear system in a **least squares sense**. To simplify the calculations we assume $T_{trigger} = 0$.
+$$ min_{(x,y)} \sum_{i} \mathcal{L}(T_i - \sqrt{(\frac{x - x_i}{v_x})^2 + (\frac{y - y_i}{v_y})^2} $$
+
+for an appropriate loss function. Note that some loss functions can attenuate the contributions of outliers.
 
 
-# Optimization
-The solution of the problem satisfy simultaneously all the sensor constraints. Since there may be errors, we say that the solution satisfy the non linear system in a **least squares** sense.
+### Regularity (or lack of)
+The least squares problem is a very elegant solution, but the loss function is not $C^1$. In fact, the gradients are discontinuous on the sensor locations. This means that a line search optimizer will struggle when approaching sensor locations.
 
-Selecting an appropriate loss function is critical in the presence of outliers (the goal of this notebook). In that case, alternative loss functions like Cauchy attenuate the contribution of the outliers.
-
-$$ \mathcal{L}(x, y) = \frac{1}{N} \sum_{i=1}^{N} \rho(T_i - \sqrt{(\frac{x - x_i}{v_x})^2 + (\frac{y - y_i}{v_y})^2}) $$
-
-
-## Ill conditioned problem
-When solving the unperturbed problem I found a strange convergence behaviour. Some optimization runs terminated with a convergence condition, but the solution was way off from the real source position.
-
-This suggests that the problem is ill conditioned, so I studied the loss landscape. It's possible to do it graphically because the problem is only 2-dimensional
+We have experimental evidence that at least 5% of the optimizations fail. Further analysis shows that the problem is ill-conditioned i.e. the termination condition on the gradient is not a good estimator of the error. The plot below shows exponential energy levels, see how squeezed they are
 
 ![plot](./resources/ill_condition.png)
 
-The contour lines (exponential energy levels) are so squished that an optimizer may get convergence before coming close to the real minimum. I still have to figure out a cure.
+
+### Patches
+Some techniques for lowering the error rate of the optimization procedure are proposed. For instance, improving the choice of the starting point before optimization has a positive effect. A (coarse) *grid search* is used to get close to the optimum, reducing the contribution of non linearities. However, grid search is an *antipattern* and is not in the ethos of numerical optimization.
+
+Another technique is to eliminate the sensors that produce the discontinuity in the gradient. This is very successful and fails only when the source is placed very close to the sensors.
 
 
-## Optimization in the presence of outliers
-By injecting an error on a random sensor, the loss function changes (and so the optimal point)
-
-A simple simulation shows the effect on the solution error as a function of the injected error. The choice of the loss function is critical for being robust to outliers. In this plot the function `scipy.optimize.least_squares` is used to solve a perturbed problem: an unbiased gaussian noise with variance $\sigma^2$ is added to some of the sensors.
-
-![plot](./resources/lsq_robustness.png)
+## As an higher dimensional optimization problem
+The essence of the least squares description is to satisfy simultaneously the constraint. For our purposes such constraints are level curves of functions with discontinuous gradients.
 
 
-## Using "robust" optimizers
-I'm interested in improving the error bounds for the least squares optimizers. This problem is hard because an optimizer is only good as its loss (*).
+We could enforce to satisfy the sensor constraints by parametrizing them. Since they are ellipses there is a $C^{\infty}$ parametrization $\phi_i{\theta_i}$ for each sensor. As we asked a single source to satisfy all constraints, not we ask **all parametrizations to be a single source**
+$$ min_{\mathbf{\theta}} Var(\phi_i{\theta_i}) $$
 
-As changing the loss improve the robustness to outlier, the next step is removing the loss contributions of outliers. I found experimentally that the residuals after the first optimization pass are estimators (qualitative) of the perturbation injected in the arrival times.
-We can use anomaly detection techniques for filtering out the outlier contributions from the loss function.
+where the variance is a measure of how those parametrizations agree with each other. Ideally the variance is zero and all the parametrizations are a single point, otherwise the problem solution is the mean of the parametrizations.
 
-The lower bound for such techniques is a method with 100% accuracy on outlier detection. This process is simulated by an oracle that knows which sensor data is anomalous.
+
+### Regularity
+The resulting problem has the dimensions of the sensors, but we expect a positive result as:
+  * it has infinite regularity
+  * it is bounded (the $\phi{i} are periodic)
+
+the problems could be:
+  * there may be multiple stationary points in the domain
+  * the gradients and hessians are hard to compute
+  * if zero variance is not reached, the resulting source location could be nonsense
