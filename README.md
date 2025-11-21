@@ -34,19 +34,19 @@ Another technique is to eliminate the sensors that produce the discontinuity in 
 
 
 ## As an higher dimensional optimization problem
-The essence of the least squares description is to satisfy simultaneously the constraint. For our purposes such constraints are level curves of functions with discontinuous gradients.
+The essence of the least squares description is to satisfy simultaneously the constraints. For our purposes such constraints are level curves of functions with discontinuous gradients.
 
 
-We could enforce to satisfy the sensor constraints by parametrizing them. Since they are ellipses there is a $C^{\infty}$ parametrization $\phi_i{\theta_i}$ for each sensor. As we asked a single source to satisfy all constraints, not we ask **all parametrizations to be a single source**
-$$ min_{\mathbf{\theta}} Var(\phi_i{\theta_i}) $$
+We could enforce to satisfy the sensor constraints by parametrizing them. Since they are ellipses there is a $C^{\infty}$ parametrization $\phi_i({\theta_i})$ for each sensor. As we asked a single source to satisfy all constraints, not we ask **all parametrizations to be a single source**
+$$ min_{\mathbf{\theta}} \quad Var(\phi_i({\theta_i})) $$
 
-where the variance is a measure of how those parametrizations agree with each other. Ideally the variance is zero and all the parametrizations are a single point, otherwise the problem solution is the mean of the parametrizations.
+where the variance is a measure of how those parametrizations agree with eachother. Ideally the variance is zero and all the parametrizations are a single point, otherwise the problem solution is the mean of the parametrizations.
 
 
 ### Regularity
 The resulting problem has the dimensions of the sensors, but we expect a positive result as:
   * it has infinite regularity
-  * it is bounded (the $\phi{i} are periodic)
+  * it is bounded (the $\phi_{i}$ are periodic)
 
 the problems could be:
   * there may be multiple stationary points in the domain

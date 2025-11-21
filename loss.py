@@ -14,12 +14,21 @@ def residual(problem: SingleSourceProblem, x: np.ndarray) -> np.ndarray:
 # I was not able to use autograd libraries, so here's an hand-written implementation
 # there was an error because I didn't divide by velocity
 def jacobian(problem: SingleSourceProblem, x: np.ndarray) -> np.ndarray:
+    # we need to protect ourselves from NaNs in this calculation
     diffs = (x - problem.sensor_locations) / problem.velocity
-    return -diffs / (np.linalg.norm(diffs, axis=-1, keepdims=True) * problem.velocity)
+
+    result = -diffs / (np.linalg.norm(diffs, axis=-1, keepdims=True) * problem.velocity)
+
+    nan_mask = np.isnan(result)
+    inf_mask = np.isinf(result)
+
+    reject_mask = nan_mask | inf_mask
+    result[reject_mask] = 0
+
+    return result
 
 
-# I'm thinking of calling it "LossInterface"
-class AbstractLoss:
+class LossInterface:
     def get_scipy_equivalent(self) -> str:
         raise NotImplementedError()
 
@@ -33,7 +42,7 @@ class AbstractLoss:
         raise NotImplementedError()
 
 
-class SquaredLoss(AbstractLoss):
+class SquaredLoss(LossInterface):
     def get_scipy_equivalent(self) -> str:
         return 'linear'
 
@@ -46,7 +55,7 @@ class SquaredLoss(AbstractLoss):
         return "SquaredLoss()"
 
 
-class HuberLoss(AbstractLoss):
+class HuberLoss(LossInterface):
     def __init__(self, delta: float = 1.0):
         self.delta = delta
 
@@ -60,7 +69,7 @@ class HuberLoss(AbstractLoss):
         return f"HuberLoss({self.delta})"
 
 
-class CauchyLoss(AbstractLoss):
+class CauchyLoss(LossInterface):
     def __init__(self, c: float = 1.0):
         self.c = c
 
@@ -76,7 +85,7 @@ class CauchyLoss(AbstractLoss):
         return "CauchyLoss()"
 
 
-class ArctanLoss(AbstractLoss):
+class ArctanLoss(LossInterface):
     def __init__(self, c: float = 1.0):
         self.c = c
 
