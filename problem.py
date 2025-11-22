@@ -83,7 +83,7 @@ class SingleSourceProblem:
 
         arrival_times = compute_arrival_time(
             SENSOR_LOCATIONS,
-            VELOCITY,
+            velocity,
             trigger_time,
             source_location
         )
@@ -99,7 +99,7 @@ class SingleSourceProblem:
 
         return SingleSourceProblem(
             trigger_time,
-            VELOCITY,
+            velocity,
             source_location,
             SENSOR_LOCATIONS,
             arrival_times + perturbation,
@@ -108,7 +108,7 @@ class SingleSourceProblem:
 
 
     def get_random_subproblem(self, n: int) -> 'SingleSourceProblem':
-        assert(2 < n <= self.sensor_count)
+        assert(2 <= n <= self.sensor_count)
 
         idx = np.random.choice(
             self.sensor_count,
