@@ -1,11 +1,11 @@
 import numpy as np
 
 
-# box dimension
-L = 2.0
+# all the sensors and random sources are placed in [-L,L] x [-L,L]
+L: float = 2.0
 
 
-# positions of the sensors. Obtained from legacy problem specification
+# positions of the sensors, obtained from legacy problem specification
 SENSOR_LOCATIONS = np.array([
     [3.42658477, 2.46352549],
     [3.23637347, 2.40172209],
@@ -28,24 +28,28 @@ SENSOR_LOCATIONS = np.array([
     [2.41144968, 1.4336881 ],
     [2.29389263, 1.595491  ],
 ]) - L
+assert(np.all(np.abs(SENSOR_LOCATIONS <= L)))
 
 
 # velocity of the signal in the cardiac tissue
-CONDUCTION_VELOCITY = 80.0
-A_RATIO = 5.0
+# the signal travels faster in the x direction
+CONDUCTION_VELOCITY: float = 80.0
+A_RATIO: float = 5.0
 VELOCITY = CONDUCTION_VELOCITY / np.array([1, A_RATIO])
 
 
 # time at which the source emits the signal.
 # for simplicity is null, otherwise a substitution in the sensor equations must be made
-T_TRIGGER = 0.0
+TRIGGER_TIME: float = 0.0
+assert(TRIGGER_TIME == 0.0)
 
 
-# propagation dynamic
-def compute_arrival_time(sensor_locations: np.ndarray,
-                         velocity:         np.ndarray,
-                         trigger_time:     float,
-                         source_location:  np.ndarray):
+# this function computes the time registered at each sensor location
+# if one or multiple sources were to fire at trigger_time
+def compute_activation_times(trigger_time:     float,
+                             velocity:         np.array,
+                             source_location:  np.ndarray,
+                             sensor_locations: np.ndarray):
 
     return trigger_time + np.linalg.norm(
         (np.expand_dims(source_location, axis=-2) - sensor_locations) / velocity,
@@ -56,71 +60,40 @@ def compute_arrival_time(sensor_locations: np.ndarray,
 class SingleSourceProblem:
     def __init__(self,
                  trigger_time:     float,
-                 velocity:         np.ndarray,
-                 source_location:  np.ndarray,
+                 velocity:         np.array,
                  sensor_locations: np.ndarray,
-                 arrival_times:    np.ndarray,
-                 perturbation:     np.ndarray):
+                 source_location:  np.array):
 
         self.trigger_time     = trigger_time
         self.velocity         = velocity
-        self.source_location  = source_location
         self.sensor_locations = sensor_locations
-        self.sensor_count     = sensor_locations.shape[0]
-        self.arrival_times    = arrival_times
-        self.perturbation     = perturbation
+        self.source_location  = source_location
+        self.activation_times = compute_activation_times(trigger_time,
+                                                         velocity,
+                                                         source_location,
+                                                         sensor_locations)
 
 
-    def generate_random_instance(outliers: int = 0,
-                                 sigma: float = 0.0,
-                                 velocity: np.ndarray = VELOCITY) -> 'SingleSourceProblem':
-        n = SENSOR_LOCATIONS.shape[0]
-        assert(0 <= outliers <= n)
-        assert(0.0 <= sigma)
+    def generate_random_instance(size:         int = SENSOR_LOCATIONS.shape[0],
+                                 trigger_time: float = TRIGGER_TIME,
+                                 velocity:     np.array = VELOCITY,
+                                 rng = np.random.default_rng()):
 
-        trigger_time = T_TRIGGER
-        source_location = np.array(np.random.uniform(-L, L, size=2))
+        source_location = rng.uniform(-L, L, size=2)
+        sensor_locations = SENSOR_LOCATIONS[rng.choice(SENSOR_LOCATIONS.shape[0],
+                                                       size=size,
+                                                       replace=False)]
 
-        arrival_times = compute_arrival_time(
-            SENSOR_LOCATIONS,
-            velocity,
-            trigger_time,
-            source_location
-        )
-
-        perturbation = np.zeros(n)
-        perturbation[
-            np.random.choice(
-                n,
-                size=outliers,
-                replace=False
-            )
-        ] = np.random.normal(loc=0.0, scale=sigma, size=outliers)
-
-        return SingleSourceProblem(
-            trigger_time,
-            velocity,
-            source_location,
-            SENSOR_LOCATIONS,
-            arrival_times + perturbation,
-            perturbation
-        )
+        return SingleSourceProblem(trigger_time,
+                                   velocity,
+                                   sensor_locations,
+                                   source_location)
 
 
-    def get_random_subproblem(self, n: int) -> 'SingleSourceProblem':
-        assert(2 <= n <= self.sensor_count)
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    from visualization import plot_activation_field
 
-        idx = np.random.choice(
-            self.sensor_count,
-            size=n,
-            replace=False,
-        )
-
-        return SingleSourceProblem(
-            self.trigger_time,
-            self.velocity,
-            self.source_location,
-            self.sensor_locations[idx],
-            self.arrival_times[idx],
-            self.perturbation[idx],
-        )
+    problem = SingleSourceProblem.generate_random_instance()
+    plot_activation_field(problem)
+    plt.show()
