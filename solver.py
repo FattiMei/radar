@@ -3,8 +3,23 @@ import numpy as np
 import scipy.optimize as opt
 import itertools
 
-from problem import SingleSourceProblem, L, compute_arrival_time
-from loss import residual, jacobian, LossInterface, SquaredLoss
+from problem import SingleSourceProblem, L
+from loss import ResidualInterface, LossInterface
+
+
+# this is the class that gets passed to the solvers
+#   * residuals and jacobians need to be together
+#   * you can't compute a loss without knowing the residual
+class OptimizationProblem:
+    def __init__(self,
+                 residual_obj: ResidualInterface,
+                 loss_obj: LossInterface):
+
+        self.residual_obj = residual_obj
+        self.loss_obj = loss_obj
+
+    def loss(x: np.ndarray, problem: SingleSourceProblem):
+        return self.loss_obj(self.residual_obj(x, problem))
 
 
 class OptimizeResult(opt.OptimizeResult):
@@ -26,8 +41,9 @@ class OptimizeResult(opt.OptimizeResult):
 
 # unified solver interface for both scipy and custom solvers
 class SolverInterface:
-    def __init__(self):
-        pass
+    def __init__(self, residual_obj: ResidualInterface, loss_obj: LossInterface):
+        self.residual_obj = residual_obj
+        self.loss_obj = loss_obj
 
     def overrides_initial_guess(self) -> bool:
         raise NotImplementedError()
@@ -40,36 +56,39 @@ class SolverInterface:
 
 
 class LeastSquaresSolver(SolverInterface):
-    def __init__(self, loss: LossInterface = SquaredLoss(), **kwargs):
-        self.loss = loss
+    def __init__(self, residual_obj: ResidualInterface, loss_obj: LossInterface, **kwargs):
+        super().__init__(residual_obj, loss_obj)
         self.kwargs = kwargs
 
     def overrides_initial_guess(self) -> bool:
         return False
 
     def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
-        loss_fcn = lambda x: residual(problem, x)
-        jac_fcn  = lambda x: jacobian(problem, x)
+        residuals = lambda x: self.residual_obj(x, problem)
+        jacobians = lambda x: self.residual_obj.jacobian(x, problem)
 
         return OptimizeResult(
             opt.least_squares(
-                fun=loss_fcn,
+                fun=residuals,
                 x0=x0,
-                jac=jac_fcn,
-                loss=self.loss.get_scipy_equivalent(),
+                jac=jacobians,
+                loss=self.loss_obj.get_scipy_equivalent(),
                 **self.kwargs
             )
         )
 
     def __str__(self) -> str:
-        return f'LSQ({self.loss})'
+        return f'LSQ({self.loss_obj}, {self.residual_obj})'
 
 
 class GridSearchSolver(SolverInterface):
     def __init__(self,
+                 residual_obj: ResidualInterface,
+                 loss_obj: LossInterface,
                  resolution: int,
-                 lim: float = L,
-                 loss: LossInterface = SquaredLoss()):
+                 lim: float = L):
+
+        super().__init__(residual_obj, loss_obj)
 
         mesh = np.linspace(-lim, lim, resolution)
         xx, yy = np.meshgrid(mesh, mesh)
@@ -80,13 +99,12 @@ class GridSearchSolver(SolverInterface):
         ]).T
 
         self.resolution = resolution
-        self.loss = loss
 
     def overrides_initial_guess(self) -> bool:
         return True
 
     def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
-        loss_landscape = self.loss(problem, self.grid)
+        loss_landscape = self.loss_obj(self.residual_obj(self.grid, problem))
 
         best_idx = np.argmin(loss_landscape)
         best_loss = loss_landscape[best_idx]
@@ -126,15 +144,17 @@ class TwoPhaseSolver(SolverInterface):
 
 
 class SensorStartSolver(SolverInterface):
-    def __init__(self, solver: SolverInterface, loss: LossInterface = SquaredLoss()):
+    def __init__(self, solver: SolverInterface):
         self.solver = solver
-        self.loss = loss
 
     def overrides_initial_guess(self) -> bool:
         return True
 
     def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
-        sensor_loss = self.loss(problem, problem.sensor_locations)
+        residual_obj = self.solver.residual_obj
+        loss_obj = self.solver.loss_obj
+
+        sensor_loss = loss_obj(residual_obj(problem.sensor_locations, problem))
         closest_sensor = problem.sensor_locations[
             np.argmin(sensor_loss)
         ]
@@ -143,3 +163,15 @@ class SensorStartSolver(SolverInterface):
 
     def __str__(self) -> str:
         return f'SensorStart({self.solver})'
+# 
+# 
+# class VirtualActivationSolver(SolverInterface):
+#     def __init__(self, resolution: int):
+#         assert(1 < resolution)
+#         self.resolution = resolution
+# 
+#     def overrides_initial_guess(self) -> bool:
+#         return True
+# 
+#     def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
+#         pass

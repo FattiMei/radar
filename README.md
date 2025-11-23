@@ -42,20 +42,22 @@ while some unmentioned techniques were successful, I couldn't understand why. Th
 > manipulating the problem as to require minimal tuning intervention to the solver/optimizer
 
 
-## Failed experiment: an higher dimensional optimization problem
-The essence of the least squares description is to satisfy simultaneously the constraints. For our purposes such constraints are level curves of functions with discontinuous gradients.
+## Understand optimization fails
+I blame mostly the discontinuities in the loss gradients, but it's more complicated than that. The residual equation can be squared without loss of generality (the solution sets are equal) into
 
-We could enforce to satisfy the sensor constraints by parametrizing them. Since they are ellipses there is a $C^{\infty}$ parametrization $\phi_i({\theta_i})$ for each sensor. As we asked a single source to satisfy all constraints, now we ask **all parametrizations to be a single source**
+$$ T_i^2 = (\frac{x - x_i}{v_x})^2 + (\frac{y - y_i}{v_x})^2 $$
 
-$$ min_{\mathbf{\theta}} \quad Var(\phi_i({\theta_i})) $$
-
-where the variance is a measure of how those parametrizations agree with eachother. Ideally the variance is zero and all the parametrizations are a single point, otherwise the problem solution is the mean of the parametrizations.
+this new kind of residual is $C^{\infty}$, nevertheless the resulting optimization problem is not convex. In general the problem exibits two attractors as shown in the figure.
 
 
-### Comments
-This new problem:
-  * has infinite regularity
-  * the loss function is bounded
-  * has the dimension of the sensors
+![plot](./resources/attractors.png)
 
-this new formalization is very elegant, but does not have the expected convergence. A last attempt is made by providing automatic gradients to the loss function.
+
+I still haven't understood this behaviour, but the plot suggests that multiple restarts are needed. The attractors for the original residual (which has discontinuous gradients) is not even connected!
+
+
+### Gallery
+Here are some interesting images from the optimization. The almost fractal nature of the attractor for the "SmoothResidual" is easily explained. I have used a clustering procedure with two cluster to define the attractors (because they are usually two). When there is only one attractor the clustering procedure returns two close points. The resulting attractors are interleaved and form a cool visualization
+
+![plot](./resources/strange_attractors.png)
+![plot](./resources/strange_attractors2.png)

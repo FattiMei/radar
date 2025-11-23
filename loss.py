@@ -14,13 +14,13 @@ class ResidualInterface:
 
 
 class Residual(ResidualInterface):
-    def __call__(problem: SingleSourceProblem, x: np.ndarray) -> np.ndarray:
+    def __call__(self, x: np.ndarray, problem: SingleSourceProblem) -> np.ndarray:
         return problem.activation_times - compute_activation_times(problem.trigger_time,
                                                                    problem.velocity,
                                                                    x,
                                                                    problem.sensor_locations)
 
-    def jacobian(problem: SingleSourceProblem, x: np.ndarray) -> np.ndarray:
+    def jacobian(self, x: np.ndarray, problem: SingleSourceProblem) -> np.ndarray:
         # we need to protect ourselves from NaNs in this calculation
         diffs = (x - problem.sensor_locations) / problem.velocity
 
@@ -39,16 +39,19 @@ class Residual(ResidualInterface):
 
 
 class SmoothResidual(ResidualInterface):
-    def __call__(problem: SingleSourceProblem, x: np.ndarray) -> np.ndarray:
+    def __call__(self, x: np.ndarray, problem: SingleSourceProblem) -> np.ndarray:
         time_deltas = problem.activation_times - problem.trigger_time
-        displacement_to_sensors = np.expand_dims(x, axis=-2) - sensor_locations
+        displacement_to_sensors = np.expand_dims(x, axis=-2) - problem.sensor_locations
 
         return time_deltas**2 - np.sum((displacement_to_sensors / problem.velocity)**2, axis=-1)
 
-    def jacobian(problem: SingleSourceProblem, x: np.ndarray) -> np.ndarray:
-        displacement_to_sensors = np.expand_dims(x, axis=-2) - sensor_locations
+    def jacobian(self, x: np.ndarray, problem: SingleSourceProblem) -> np.ndarray:
+        displacement_to_sensors = np.expand_dims(x, axis=-2) - problem.sensor_locations
 
-        return -2.0 * displacement_to_sensors / (velocity**2)
+        return -2.0 * displacement_to_sensors / (problem.velocity**2)
+
+    def __str__(self) -> str:
+        return 'SmoothResidual'
 
 
 class LossInterface:
@@ -76,4 +79,4 @@ class SquaredLoss(LossInterface):
         return 'linear'
 
     def __str__(self) -> str:
-        return "SquaredLoss()"
+        return "SquaredLoss"
