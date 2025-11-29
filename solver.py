@@ -132,7 +132,7 @@ class TwoPhaseSolver(SolverInterface):
         assert(not self.second_solver.overrides_initial_guess())
 
     def overrides_initial_guess(self) -> bool:
-        return True
+        return self.first_solver.overrides_initial_guess()
 
     def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
         good_starting_point = self.first_solver.solve(problem, x0).x
@@ -163,15 +163,23 @@ class SensorStartSolver(SolverInterface):
 
     def __str__(self) -> str:
         return f'SensorStart({self.solver})'
-# 
-# 
-# class VirtualActivationSolver(SolverInterface):
-#     def __init__(self, resolution: int):
-#         assert(1 < resolution)
-#         self.resolution = resolution
-# 
-#     def overrides_initial_guess(self) -> bool:
-#         return True
-# 
-#     def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
-#         pass
+
+
+class DoubleStartSolver(SolverInterface):
+    def __init__(self, solver: SolverInterface):
+        self.solver = solver
+
+    def overrides_initial_guess(self) -> bool:
+        return True
+
+    def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
+        left_x0 = np.array([-L, 0.0])
+        right_x0 = -left_x0
+
+        return min(
+            self.solver.solve(problem, left_x0),
+            self.solver.solve(problem, right_x0)
+        )
+
+    def __str__(self) -> str:
+        return f'DoubleStart({self.solver})'

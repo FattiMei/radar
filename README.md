@@ -34,6 +34,7 @@ We have experimental evidence that at least 5% of the optimizations fail. Furthe
 Some techniques for lowering the error rate of the optimization procedure are proposed:
   * improve the starting point by a (coarse) grid search
   * start the optimization from the earliest sensor
+  * start the optimization from two opposite corner of the domain and pick the best (*DoubleStart*)
 
 ![plot](./resources/fail_frequency.png)
 
