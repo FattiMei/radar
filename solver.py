@@ -165,7 +165,7 @@ class SensorStartSolver(SolverInterface):
         return f'SensorStart({self.solver})'
 
 
-class DoubleStartSolver(SolverInterface):
+class CardinalStartSolver(SolverInterface):
     def __init__(self, solver: SolverInterface):
         self.solver = solver
 
@@ -173,13 +173,15 @@ class DoubleStartSolver(SolverInterface):
         return True
 
     def solve(self, problem: SingleSourceProblem, x0: np.ndarray) -> OptimizeResult:
-        left_x0 = np.array([-L, 0.0])
-        right_x0 = -left_x0
+        west_x0 = np.array([-L, 0.0])
+        east_x0 = -west_x0
+        north_x0 = np.array([0.0, L])
+        south_x0 = -north_x0
 
         return min(
-            self.solver.solve(problem, left_x0),
-            self.solver.solve(problem, right_x0)
+            self.solver.solve(problem, x0)
+            for x0 in [west_x0, east_x0, north_x0, south_x0]
         )
 
     def __str__(self) -> str:
-        return f'DoubleStart({self.solver})'
+        return f'CardinalStart({self.solver})'
